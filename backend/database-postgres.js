@@ -6,21 +6,21 @@ class PostgresDatabase {
   }
 
   async initialize() {
-    // Use Supabase/Vercel environment variables
-    const connectionString = process.env.POSTGRES_URL || 
+    // Use Railway/Vercel/Supabase environment variables
+    const connectionString = process.env.DATABASE_URL || 
+                            process.env.POSTGRES_URL || 
                             process.env.POSTGRESS_POSTGRES_URL || 
-                            process.env.POSTGRESS_SUPABASE_URL || 
-                            process.env.DATABASE_URL;
+                            process.env.POSTGRESS_SUPABASE_URL;
     
     console.log('Available env vars:', {
+      DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
       POSTGRES_URL: process.env.POSTGRES_URL ? 'SET' : 'NOT SET',
       POSTGRESS_POSTGRES_URL: process.env.POSTGRESS_POSTGRES_URL ? 'SET' : 'NOT SET',
-      POSTGRESS_SUPABASE_URL: process.env.POSTGRESS_SUPABASE_URL ? 'SET' : 'NOT SET',
-      DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT SET'
+      POSTGRESS_SUPABASE_URL: process.env.POSTGRESS_SUPABASE_URL ? 'SET' : 'NOT SET'
     });
     
     if (!connectionString) {
-      throw new Error('No PostgreSQL connection string found. Available env vars checked: POSTGRES_URL, POSTGRESS_POSTGRES_URL, POSTGRESS_SUPABASE_URL, DATABASE_URL');
+      throw new Error('No PostgreSQL connection string found. Available env vars checked: DATABASE_URL, POSTGRES_URL, POSTGRESS_POSTGRES_URL, POSTGRESS_SUPABASE_URL');
     }
     
     console.log('Using connection string from:', connectionString.includes('supabase') ? 'Supabase' : 'Other');
