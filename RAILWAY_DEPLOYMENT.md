@@ -21,7 +21,7 @@ railway init
 
 ### 3. Add PostgreSQL Database
 ```bash
-railway add postgresql
+railway add --database postgres
 ```
 This automatically provisions a PostgreSQL database and sets the `DATABASE_URL` environment variable.
 
@@ -75,7 +75,7 @@ Railway automatically sets:
 ```bash
 railway login
 railway init
-railway add postgresql
+railway add --database postgres
 railway up
 ```
 
