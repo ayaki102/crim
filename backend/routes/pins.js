@@ -1,5 +1,12 @@
 const express = require('express');
-const database = require('../database');
+// Use PostgreSQL in production or SQLite for local development
+const database = process.env.NODE_ENV === 'production' || 
+                process.env.DATABASE_URL || 
+                process.env.POSTGRES_URL || 
+                process.env.POSTGRESS_POSTGRES_URL || 
+                process.env.POSTGRESS_SUPABASE_URL 
+  ? require('../database-postgres') 
+  : require('../database');
 
 module.exports = (io) => {
   const router = express.Router();
