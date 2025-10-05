@@ -39,6 +39,8 @@ class Database {
           longitude REAL NOT NULL,
           category TEXT DEFAULT 'default',
           color TEXT DEFAULT '#FF5733',
+          created_by TEXT NOT NULL,
+          updated_by TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
@@ -48,8 +50,8 @@ class Database {
         CREATE TABLE IF NOT EXISTS visit_history (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           pin_id INTEGER NOT NULL,
-          user_id TEXT NOT NULL,
           username TEXT NOT NULL,
+          comment TEXT,
           visited_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (pin_id) REFERENCES pins (id) ON DELETE CASCADE
         )
@@ -148,17 +150,22 @@ class Database {
 
   createPin(pinData) {
     return new Promise((resolve, reject) => {
-      const { name, description, latitude, longitude, category = 'Domyślna' } = pinData;
+      const { name, description, latitude, longitude, category = 'Domyślna', created_by } = pinData;
+      
+      if (!created_by) {
+        reject(new Error('created_by is required'));
+        return;
+      }
       
       // Get category color
       this.db.get('SELECT color FROM categories WHERE name = ?', [category], (err, categoryRow) => {
         const color = categoryRow ? categoryRow.color : '#FF5733';
         
         const sql = `
-          INSERT INTO pins (name, description, latitude, longitude, category, color, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          INSERT INTO pins (name, description, latitude, longitude, category, color, created_by, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         `;
-        this.db.run(sql, [name, description, latitude, longitude, category, color], function(err) {
+        this.db.run(sql, [name, description, latitude, longitude, category, color, created_by], function(err) {
           if (err) {
             reject(err);
           } else {
@@ -171,7 +178,12 @@ class Database {
 
   updatePin(id, pinData) {
     return new Promise((resolve, reject) => {
-      const { name, description, latitude, longitude, category } = pinData;
+      const { name, description, latitude, longitude, category, updated_by } = pinData;
+      
+      if (!updated_by) {
+        reject(new Error('updated_by is required'));
+        return;
+      }
       
       // Get category color if category is provided
       if (category) {
@@ -180,10 +192,10 @@ class Database {
           
           const sql = `
             UPDATE pins 
-            SET name = ?, description = ?, latitude = ?, longitude = ?, category = ?, color = ?, updated_at = CURRENT_TIMESTAMP
+            SET name = ?, description = ?, latitude = ?, longitude = ?, category = ?, color = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
           `;
-          this.db.run(sql, [name, description, latitude, longitude, category, color, id], function(err) {
+          this.db.run(sql, [name, description, latitude, longitude, category, color, updated_by, id], function(err) {
             if (err) {
               reject(err);
             } else {
@@ -194,10 +206,10 @@ class Database {
       } else {
         const sql = `
           UPDATE pins 
-          SET name = ?, description = ?, latitude = ?, longitude = ?, updated_at = CURRENT_TIMESTAMP
+          SET name = ?, description = ?, latitude = ?, longitude = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
           WHERE id = ?
         `;
-        this.db.run(sql, [name, description, latitude, longitude, id], function(err) {
+        this.db.run(sql, [name, description, latitude, longitude, updated_by, id], function(err) {
           if (err) {
             reject(err);
           } else {
@@ -222,14 +234,19 @@ class Database {
   }
 
   // Visit history operations
-  addVisit(pinId, userId, username) {
+  addVisit(pinId, username, comment = null) {
     return new Promise((resolve, reject) => {
-      const sql = 'INSERT INTO visit_history (pin_id, user_id, username) VALUES (?, ?, ?)';
-      this.db.run(sql, [pinId, userId, username], function(err) {
+      if (!username) {
+        reject(new Error('username is required'));
+        return;
+      }
+      
+      const sql = 'INSERT INTO visit_history (pin_id, username, comment) VALUES (?, ?, ?)';
+      this.db.run(sql, [pinId, username, comment], function(err) {
         if (err) {
           reject(err);
         } else {
-          resolve({ id: this.lastID, pinId, userId, username });
+          resolve({ id: this.lastID, pinId, username, comment });
         }
       });
     });
@@ -262,6 +279,72 @@ class Database {
           reject(err);
         } else {
           resolve(rows);
+        }
+      });
+    });
+  }
+
+  createCategory(name, color) {
+    return new Promise((resolve, reject) => {
+      const sql = 'INSERT INTO categories (name, color) VALUES (?, ?)';
+      this.db.run(sql, [name, color], function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ id: this.lastID, name, color });
+        }
+      });
+    });
+  }
+
+  updateCategory(id, name, color) {
+    return new Promise((resolve, reject) => {
+      const sql = 'UPDATE categories SET name = ?, color = ? WHERE id = ?';
+      this.db.run(sql, [name, color, id], function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ id, name, color, updated: this.changes > 0 });
+        }
+      });
+    });
+  }
+
+  deleteCategory(id) {
+    return new Promise((resolve, reject) => {
+      // First check if category is in use
+      this.db.get('SELECT COUNT(*) as count FROM pins WHERE category = (SELECT name FROM categories WHERE id = ?)', [id], (err, row) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        
+        if (row.count > 0) {
+          reject(new Error('Nie można usunąć kategorii która jest używana przez piny'));
+          return;
+        }
+        
+        // Delete category if not in use
+        const sql = 'DELETE FROM categories WHERE id = ?';
+        this.db.run(sql, [id], function(err) {
+          if (err) {
+            reject(err);
+          } else {
+            resolve({ id, deleted: this.changes > 0 });
+          }
+        });
+      });
+    });
+  }
+
+  getCategoryById(id) {
+    return new Promise((resolve, reject) => {
+      const sql = 'SELECT * FROM categories WHERE id = ?';
+      this.db.get(sql, [id], (err, row) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(row);
         }
       });
     });

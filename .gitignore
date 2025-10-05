@@ -110,3 +110,4 @@ Thumbs.db
 # Production build
 dist/
 build/
+.vercel

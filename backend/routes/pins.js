@@ -34,11 +34,11 @@ module.exports = (io) => {
   // POST /api/pins - Create new pin
   router.post('/', async (req, res) => {
     try {
-      const { name, description, latitude, longitude, category } = req.body;
+      const { name, description, latitude, longitude, category, created_by } = req.body;
 
-      if (!name || !latitude || !longitude) {
+      if (!name || !latitude || !longitude || !created_by) {
         return res.status(400).json({ 
-          error: 'Nazwa, szerokość i długość geograficzna są wymagane' 
+          error: 'Nazwa, szerokość, długość geograficzna i nazwa twórcy są wymagane' 
         });
       }
 
@@ -47,11 +47,14 @@ module.exports = (io) => {
         description: description ? description.trim() : '',
         latitude: parseFloat(latitude),
         longitude: parseFloat(longitude),
-        category: category || 'Domyślna'
+        category: category || 'Domyślna',
+        created_by: created_by.trim()
       });
 
-      // Emit real-time update to all connected clients
-      io.to('pins_room').emit('pin_created', newPin);
+      // Emit real-time update to all connected clients (if available)
+      if (io) {
+        io.to('pins_room').emit('pin_created', newPin);
+      }
 
       res.status(201).json(newPin);
     } catch (error) {
@@ -63,12 +66,12 @@ module.exports = (io) => {
   // PUT /api/pins/:id - Update existing pin
   router.put('/:id', async (req, res) => {
     try {
-      const { name, description, latitude, longitude, category } = req.body;
+      const { name, description, latitude, longitude, category, updated_by } = req.body;
       const pinId = req.params.id;
 
-      if (!name || !latitude || !longitude) {
+      if (!name || !latitude || !longitude || !updated_by) {
         return res.status(400).json({ 
-          error: 'Nazwa, szerokość i długość geograficzna są wymagane' 
+          error: 'Nazwa, szerokość, długość geograficzna i nazwa edytora są wymagane' 
         });
       }
 
@@ -82,11 +85,14 @@ module.exports = (io) => {
         description: description ? description.trim() : '',
         latitude: parseFloat(latitude),
         longitude: parseFloat(longitude),
-        category: category
+        category: category,
+        updated_by: updated_by.trim()
       });
 
-      // Emit real-time update to all connected clients
-      io.to('pins_room').emit('pin_updated', updatedPin);
+      // Emit real-time update to all connected clients (if available)
+      if (io) {
+        io.to('pins_room').emit('pin_updated', updatedPin);
+      }
 
       res.json(updatedPin);
     } catch (error) {
@@ -108,8 +114,10 @@ module.exports = (io) => {
       const result = await database.deletePin(pinId);
       
       if (result.deleted) {
-        // Emit real-time update to all connected clients
-        io.to('pins_room').emit('pin_deleted', { id: parseInt(pinId) });
+        // Emit real-time update to all connected clients (if available)
+        if (io) {
+          io.to('pins_room').emit('pin_deleted', { id: parseInt(pinId) });
+        }
         res.json({ message: 'Pin został usunięty pomyślnie', id: parseInt(pinId) });
       } else {
         res.status(404).json({ error: 'Pin nie został znaleziony' });
@@ -124,21 +132,26 @@ module.exports = (io) => {
   router.post('/:id/visit', async (req, res) => {
     try {
       const pinId = req.params.id;
-      const userId = req.session.userId;
-      const username = req.session.username;
+      const { username, comment } = req.body;
+
+      if (!username) {
+        return res.status(400).json({ error: 'Nazwa użytkownika jest wymagana' });
+      }
 
       const existingPin = await database.getPinById(pinId);
       if (!existingPin) {
         return res.status(404).json({ error: 'Pin nie został znaleziony' });
       }
 
-      const visit = await database.addVisit(pinId, userId, username);
+      const visit = await database.addVisit(pinId, username.trim(), comment ? comment.trim() : null);
       
-      // Emit real-time update to all connected clients
-      io.to('pins_room').emit('pin_visited', {
-        pinId: parseInt(pinId),
-        visit: visit
-      });
+      // Emit real-time update to all connected clients (if available)
+      if (io) {
+        io.to('pins_room').emit('pin_visited', {
+          pinId: parseInt(pinId),
+          visit: visit
+        });
+      }
 
       res.json({ 
         message: 'Wizyta została zarejestrowana', 
@@ -168,7 +181,7 @@ module.exports = (io) => {
     }
   });
 
-  // GET /api/categories - Get all categories
+  // GET /api/pins/categories/all - Get all categories
   router.get('/categories/all', async (req, res) => {
     try {
       const categories = await database.getAllCategories();
@@ -176,6 +189,97 @@ module.exports = (io) => {
     } catch (error) {
       console.error('Błąd przy pobieraniu kategorii:', error);
       res.status(500).json({ error: 'Błąd serwera przy pobieraniu kategorii' });
+    }
+  });
+
+  // POST /api/pins/categories - Create new category
+  router.post('/categories', async (req, res) => {
+    try {
+      const { name, color } = req.body;
+
+      if (!name || !color) {
+        return res.status(400).json({ 
+          error: 'Nazwa i kolor kategorii są wymagane' 
+        });
+      }
+
+      const newCategory = await database.createCategory(name.trim(), color);
+
+      // Emit real-time update to all connected clients (if available)
+      if (io) {
+        io.to('pins_room').emit('category_created', newCategory);
+      }
+
+      res.status(201).json(newCategory);
+    } catch (error) {
+      console.error('Błąd przy tworzeniu kategorii:', error);
+      if (error.message.includes('UNIQUE constraint failed')) {
+        res.status(409).json({ error: 'Kategoria o tej nazwie już istnieje' });
+      } else {
+        res.status(500).json({ error: 'Błąd serwera przy tworzeniu kategorii' });
+      }
+    }
+  });
+
+  // PUT /api/pins/categories/:id - Update existing category
+  router.put('/categories/:id', async (req, res) => {
+    try {
+      const { name, color } = req.body;
+      const categoryId = req.params.id;
+
+      if (!name || !color) {
+        return res.status(400).json({ 
+          error: 'Nazwa i kolor kategorii są wymagane' 
+        });
+      }
+
+      const existingCategory = await database.getCategoryById(categoryId);
+      if (!existingCategory) {
+        return res.status(404).json({ error: 'Kategoria nie została znaleziona' });
+      }
+
+      const updatedCategory = await database.updateCategory(categoryId, name.trim(), color);
+
+      // Emit real-time update to all connected clients (if available)
+      if (io) {
+        io.to('pins_room').emit('category_updated', updatedCategory);
+      }
+
+      res.json(updatedCategory);
+    } catch (error) {
+      console.error('Błąd przy aktualizacji kategorii:', error);
+      if (error.message.includes('UNIQUE constraint failed')) {
+        res.status(409).json({ error: 'Kategoria o tej nazwie już istnieje' });
+      } else {
+        res.status(500).json({ error: 'Błąd serwera przy aktualizacji kategorii' });
+      }
+    }
+  });
+
+  // DELETE /api/pins/categories/:id - Delete category
+  router.delete('/categories/:id', async (req, res) => {
+    try {
+      const categoryId = req.params.id;
+      
+      const existingCategory = await database.getCategoryById(categoryId);
+      if (!existingCategory) {
+        return res.status(404).json({ error: 'Kategoria nie została znaleziona' });
+      }
+
+      const result = await database.deleteCategory(categoryId);
+      
+      if (result.deleted) {
+        // Emit real-time update to all connected clients (if available)
+        if (io) {
+          io.to('pins_room').emit('category_deleted', { id: parseInt(categoryId) });
+        }
+        res.json({ message: 'Kategoria została usunięta pomyślnie', id: parseInt(categoryId) });
+      } else {
+        res.status(404).json({ error: 'Kategoria nie została znaleziona' });
+      }
+    } catch (error) {
+      console.error('Błąd przy usuwaniu kategorii:', error);
+      res.status(400).json({ error: error.message || 'Błąd serwera przy usuwaniu kategorii' });
     }
   });
 
