@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  # Map Pins App
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount data directory to persist SQLite database
+      - ./data:/app/data
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      # Uncomment the line below if you want to use PostgreSQL instead of SQLite
+      # - POSTGRES_URL=postgresql://postgres:password@postgres:5432/mapdb
+
+  # Optional PostgreSQL database (uncomment if needed)
+  # postgres:
+  #   image: postgres:15-alpine
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_DB: mapdb
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: password
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+
+# volumes:
+#   postgres_data:

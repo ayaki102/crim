@@ -6,24 +6,13 @@ class PostgresDatabase {
   }
 
   async initialize() {
-    // Use Railway/Vercel/Supabase environment variables
-    const connectionString = process.env.DATABASE_URL || 
-                            process.env.POSTGRES_URL || 
-                            process.env.POSTGRESS_POSTGRES_URL || 
-                            process.env.POSTGRESS_SUPABASE_URL;
-    
-    console.log('Available env vars:', {
-      DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
-      POSTGRES_URL: process.env.POSTGRES_URL ? 'SET' : 'NOT SET',
-      POSTGRESS_POSTGRES_URL: process.env.POSTGRESS_POSTGRES_URL ? 'SET' : 'NOT SET',
-      POSTGRESS_SUPABASE_URL: process.env.POSTGRESS_SUPABASE_URL ? 'SET' : 'NOT SET'
-    });
+    const connectionString = process.env.POSTGRES_URL;
     
     if (!connectionString) {
-      throw new Error('No PostgreSQL connection string found. Available env vars checked: DATABASE_URL, POSTGRES_URL, POSTGRESS_POSTGRES_URL, POSTGRESS_SUPABASE_URL');
+      throw new Error('POSTGRES_URL environment variable is required for PostgreSQL database');
     }
     
-    console.log('Using connection string from:', connectionString.includes('supabase') ? 'Supabase' : 'Other');
+    console.log('Connecting to PostgreSQL database...');
 
     // Configure SSL based on the connection string and environment
     const sslConfig = connectionString.includes('localhost') || connectionString.includes('127.0.0.1') 

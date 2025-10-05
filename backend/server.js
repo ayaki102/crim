@@ -4,22 +4,12 @@ const socketIo = require('socket.io');
 const path = require('path');
 const cors = require('cors');
 
-// Use PostgreSQL only when explicitly configured with PostgreSQL-specific env vars
-// or when DATABASE_URL contains 'postgres' or 'postgresql'
-const usePostgres = process.env.POSTGRES_URL || 
-                    process.env.POSTGRESS_POSTGRES_URL || 
-                    process.env.POSTGRESS_SUPABASE_URL || 
-                    (process.env.DATABASE_URL && 
-                     (process.env.DATABASE_URL.includes('postgres') || process.env.DATABASE_URL.includes('postgresql')));
-
+// Simple database configuration for self-hosting
+// Use PostgreSQL if POSTGRES_URL is set, otherwise use SQLite
+const usePostgres = !!(process.env.POSTGRES_URL);
 const database = usePostgres ? require('./database-postgres') : require('./database');
 
-console.log('Database selection:', {
-  usePostgres: !!usePostgres,
-  NODE_ENV: process.env.NODE_ENV,
-  DATABASE_URL_set: !!process.env.DATABASE_URL,
-  POSTGRES_URL_set: !!process.env.POSTGRES_URL
-});
+console.log(`Using ${usePostgres ? 'PostgreSQL' : 'SQLite'} database`);
 const pinsRoutes = require('./routes/pins');
 
 const app = express();
