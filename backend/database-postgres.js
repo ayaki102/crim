@@ -25,15 +25,14 @@ class PostgresDatabase {
     
     console.log('Using connection string from:', connectionString.includes('supabase') ? 'Supabase' : 'Other');
 
+    // Configure SSL based on the connection string and environment
+    const sslConfig = connectionString.includes('localhost') || connectionString.includes('127.0.0.1') 
+      ? false 
+      : { rejectUnauthorized: false };
+    
     this.pool = new Pool({
       connectionString: connectionString,
-      ssl: process.env.NODE_ENV === 'production' ? {
-        rejectUnauthorized: false,
-        require: true,
-        ca: undefined,
-        cert: undefined,
-        key: undefined
-      } : false
+      ssl: sslConfig
     });
 
     // Test connection

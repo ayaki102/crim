@@ -351,9 +351,20 @@ class Database {
   }
 
   close() {
-    if (this.db) {
-      this.db.close();
-    }
+    return new Promise((resolve) => {
+      if (this.db) {
+        const db = this.db;
+        this.db = null; // Prevent multiple close attempts
+        db.close((err) => {
+          if (err && err.code !== 'SQLITE_MISUSE') {
+            console.error('Error closing SQLite database:', err);
+          }
+          resolve();
+        });
+      } else {
+        resolve();
+      }
+    });
   }
 }
 
