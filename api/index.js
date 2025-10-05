@@ -5,7 +5,11 @@ const path = require('path');
 const cors = require('cors');
 
 // Use PostgreSQL in production (Vercel) or SQLite for local development
-const database = process.env.NODE_ENV === 'production' || process.env.POSTGRES_URL || process.env.DATABASE_URL 
+const database = process.env.NODE_ENV === 'production' || 
+                process.env.POSTGRES_URL || 
+                process.env.POSTGRESS_POSTGRES_URL || 
+                process.env.POSTGRESS_SUPABASE_URL || 
+                process.env.DATABASE_URL 
   ? require('../backend/database-postgres') 
   : require('../backend/database');
 const pinsRoutes = require('../backend/routes/pins');
@@ -26,11 +30,19 @@ let dbInitialized = false;
 async function initializeDatabase() {
   if (!dbInitialized) {
     try {
+      console.log('Initializing database...');
+      console.log('Environment check:', {
+        NODE_ENV: process.env.NODE_ENV,
+        hasPostgresUrl: !!process.env.POSTGRES_URL,
+        hasPostgressUrl: !!process.env.POSTGRESS_POSTGRES_URL,
+        hasSupabaseUrl: !!process.env.POSTGRESS_SUPABASE_URL
+      });
       await database.initialize();
       dbInitialized = true;
       console.log('Database initialized successfully');
     } catch (error) {
       console.error('Database initialization failed:', error);
+      console.error('Error details:', error.message);
       throw error;
     }
   }
@@ -42,7 +54,11 @@ app.use('/api/pins', async (req, res, next) => {
     await initializeDatabase();
     next();
   } catch (error) {
-    res.status(500).json({ error: 'Database initialization failed' });
+    console.error('API Database error:', error);
+    res.status(500).json({ 
+      error: 'Database initialization failed', 
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Database connection error'
+    });
   }
 }, pinsRoutes(null)); // Note: Socket.io won't work in serverless, but we'll handle that
 

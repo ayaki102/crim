@@ -5,7 +5,11 @@ const path = require('path');
 const cors = require('cors');
 
 // Use PostgreSQL in production (Vercel) or SQLite for local development
-const database = process.env.NODE_ENV === 'production' || process.env.POSTGRES_URL || process.env.DATABASE_URL 
+const database = process.env.NODE_ENV === 'production' || 
+                process.env.POSTGRES_URL || 
+                process.env.POSTGRESS_POSTGRES_URL || 
+                process.env.POSTGRESS_SUPABASE_URL || 
+                process.env.DATABASE_URL 
   ? require('./database-postgres') 
   : require('./database');
 const pinsRoutes = require('./routes/pins');

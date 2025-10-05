@@ -6,16 +6,34 @@ class PostgresDatabase {
   }
 
   async initialize() {
-    // Use Vercel's environment variables or fallback to local PostgreSQL
-    const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+    // Use Supabase/Vercel environment variables
+    const connectionString = process.env.POSTGRES_URL || 
+                            process.env.POSTGRESS_POSTGRES_URL || 
+                            process.env.POSTGRESS_SUPABASE_URL || 
+                            process.env.DATABASE_URL;
+    
+    console.log('Available env vars:', {
+      POSTGRES_URL: process.env.POSTGRES_URL ? 'SET' : 'NOT SET',
+      POSTGRESS_POSTGRES_URL: process.env.POSTGRESS_POSTGRES_URL ? 'SET' : 'NOT SET',
+      POSTGRESS_SUPABASE_URL: process.env.POSTGRESS_SUPABASE_URL ? 'SET' : 'NOT SET',
+      DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT SET'
+    });
     
     if (!connectionString) {
-      throw new Error('No PostgreSQL connection string found. Please set POSTGRES_URL or DATABASE_URL environment variable.');
+      throw new Error('No PostgreSQL connection string found. Available env vars checked: POSTGRES_URL, POSTGRESS_POSTGRES_URL, POSTGRESS_SUPABASE_URL, DATABASE_URL');
     }
+    
+    console.log('Using connection string from:', connectionString.includes('supabase') ? 'Supabase' : 'Other');
 
     this.pool = new Pool({
       connectionString: connectionString,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+      ssl: process.env.NODE_ENV === 'production' ? {
+        rejectUnauthorized: false,
+        require: true,
+        ca: undefined,
+        cert: undefined,
+        key: undefined
+      } : false
     });
 
     // Test connection
