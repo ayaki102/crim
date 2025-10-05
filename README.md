@@ -97,6 +97,27 @@ If port 3000 is busy, you can:
 - Change the port: `PORT=8080 npm start`
 - Or kill existing processes: `lsof -ti:3000 | xargs kill`
 
+## Internet Exposure
+
+To make your app accessible from anywhere on the internet:
+
+### Quick Setup (Recommended)
+
+1. **Transfer to Pi**: `./transfer-to-pi.sh YOUR_PI_IP`
+2. **Deploy**: `ssh pi@YOUR_PI_IP 'cd ~/map-pins-app && ./deploy-rpi.sh'`
+3. **Expose to Internet**: `ssh pi@YOUR_PI_IP 'cd ~/map-pins-app && ./setup-internet.sh'`
+
+### Internet Exposure Options
+
+- **Ngrok**: Easiest, works in 5 minutes, free tier available
+- **Cloudflare Tunnel**: Best for permanent use, free, secure, HTTPS
+- **Port Forwarding**: Traditional method, requires router access
+- **VPS Proxy**: Professional setup, costs ~$5/month
+
+📖 **See detailed guides**:
+- `INTERNET_EXPOSURE.md` - Complete internet exposure guide
+- `RASPBERRY_PI.md` - Raspberry Pi deployment guide
+
 ## License
 
 MIT
